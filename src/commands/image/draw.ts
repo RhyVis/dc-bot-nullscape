@@ -304,7 +304,7 @@ export const command: Command = {
       logger.logGeneration({
         userId: interaction.user.id,
         username: interaction.user.username,
-        prompt: finalPrompt.positive,
+        prompt: "err",
         model,
         seed: seed ?? 0,
         success: false,

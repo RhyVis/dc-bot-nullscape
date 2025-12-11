@@ -56,15 +56,15 @@ export const PROMPT_PRESETS: Record<string, PromptPreset> = {
     modelType: "all",
   },
 
-  // Furry 风格
-  furry: {
-    id: "furry",
-    name: "🦊 Furry",
-    description: "Furry / 兽人风格",
-    qualityTags: "{best quality}, {amazing quality}, very aesthetic",
+  testing_1: {
+    id: "testing_1",
+    name: "🧪 忘了哪偷的串",
+    description: "测试用的预设",
+    qualityTags:
+      "4::masterpiece, best quality ::, 2::official art, year2025 ::, 1.55::artist:nobusawa_osamu ::, 1.55::artist:tedain ::, 0.65::artist:houkisei ::, -2::3D, chibi,realistic ::, no text",
     negativeTags:
-      "lowres, bad anatomy, bad hands, text, error, missing fingers, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, blurry, human",
-    modelType: "all",
+      "worst quality,low quality,artist collaboration, bad anatomy,extra fingers,extra legs, missing legs, missing fingers, mutation, text, watermark, low resolution",
+    modelType: "v4",
   },
 
   // 无预设 - 完全自定义
