@@ -3,6 +3,9 @@ FROM node:22-alpine AS builder
 
 WORKDIR /app
 
+# Toolchain for native builds (e.g., better-sqlite3 on arm64/musl)
+RUN apk add --no-cache python3 make g++
+
 # Copy package files
 COPY package*.json ./
 
@@ -14,6 +17,9 @@ COPY . .
 
 # Build TypeScript
 RUN npm run build
+
+# Drop dev dependencies to shrink what we ship
+RUN npm prune --omit=dev && npm cache clean --force
 
 # Production stage
 FROM node:22-alpine AS runner
@@ -27,10 +33,7 @@ RUN addgroup --system --gid 1001 nodejs && \
 # Copy built files and production dependencies
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/package*.json ./
-
-# Install only production dependencies
-RUN npm ci --omit=dev && \
-    npm cache clean --force
+COPY --from=builder /app/node_modules ./node_modules
 
 # Change ownership to non-root user
 RUN chown -R botuser:nodejs /app
