@@ -1,10 +1,12 @@
 # Build stage
-FROM node:22-alpine AS builder
+FROM node:22-slim AS builder
 
 WORKDIR /app
 
-# Toolchain for native builds (e.g., better-sqlite3 on arm64/musl)
-RUN apk add --no-cache python3 make g++
+# Toolchain for native builds (e.g., better-sqlite3) on glibc
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends python3 make g++ \
+    && rm -rf /var/lib/apt/lists/*
 
 # Copy package files
 COPY package*.json ./
@@ -22,13 +24,13 @@ RUN npm run build
 RUN npm prune --omit=dev && npm cache clean --force
 
 # Production stage
-FROM node:22-alpine AS runner
+FROM node:22-slim AS runner
 
 WORKDIR /app
 
 # Create non-root user for security
-RUN addgroup --system --gid 1001 nodejs && \
-    adduser --system --uid 1001 botuser
+RUN groupadd -g 1001 nodejs && \
+    useradd -m -u 1001 -g nodejs botuser
 
 # Copy built files and production dependencies
 COPY --from=builder /app/dist ./dist
