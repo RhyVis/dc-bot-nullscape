@@ -1,0 +1,33 @@
+services:
+  bot:
+    # 使用 GHCR 镜像部署（建议）
+    image: ghcr.io/yourusername/bot-nullscape:latest
+    # 如果需要本地构建镜像，可改用 build：
+    # build: .
+    container_name: bot-nullscape
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      # 必需：Discord / NovelAI / LLM 配置
+      - DISCORD_TOKEN=${DISCORD_TOKEN}
+      - CLIENT_ID=${CLIENT_ID}
+      - NAI_API_KEY=${NAI_API_KEY}
+      - NAI_BASE_URL=${NAI_BASE_URL:-https://image.novelai.net}
+      - NAI_LIMIT_MODE=${NAI_LIMIT_MODE:-false}
+      - LLM_API_KEY=${LLM_API_KEY}
+      - LLM_BASE_URL=${LLM_BASE_URL:-https://api.openai.com/v1}
+      - LLM_MODEL=${LLM_MODEL:-gpt-4o-mini}
+
+      # 管理员与速率限制
+      - ADMIN_USER_IDS=${ADMIN_USER_IDS:-}
+      - RATE_LIMIT_PER_MIN=${RATE_LIMIT_PER_MIN:-3}
+
+      # SQLite 数据库路径，确保挂载卷内持久化
+      - DB_PATH=/app/data/settings.db
+
+    volumes:
+      # SQLite 数据库存放目录（持久化运行时设置）
+      - ./data:/app/data
+      # 可选：日志目录
+      # - ./logs:/app/logs
