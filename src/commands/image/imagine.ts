@@ -22,9 +22,7 @@ import {
   createPlaceholder,
   runWithInteractionTimeout,
 } from "../../utils/interactionPlaceholder.js";
-import {
-  applyLimitModeToSize,
-} from "../../utils/limitMode.js";
+import { applyLimitModeToSize } from "../../utils/limitMode.js";
 import { formatDuration } from "../../utils/duration.js";
 
 // 构建模型选项
@@ -204,7 +202,6 @@ export const command: Command = {
                 },
               ]
             : []),
-          },
         ],
       });
 
