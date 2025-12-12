@@ -2,6 +2,14 @@ import {
   SlashCommandBuilder,
   ChatInputCommandInteraction,
   EmbedBuilder,
+  ActionRowBuilder,
+  ModalBuilder,
+  TextInputBuilder,
+  TextInputStyle,
+  ButtonBuilder,
+  ButtonStyle,
+  type ButtonInteraction,
+  type ModalSubmitInteraction,
 } from 'discord.js';
 import { Command } from '../../types/commands.js';
 import { isAdminUser } from '../../auth/adminAuth.js';
@@ -27,6 +35,275 @@ function validatePresetId(id: string): string | null {
     return 'preset id 仅允许字母、数字、下划线、短横线';
   }
   return null;
+}
+
+const PRESET_UPSERT_STEP1_MODAL_ID_PREFIX = 'settings:preset_upsert:step1';
+const PRESET_UPSERT_STEP2_MODAL_ID_PREFIX = 'settings:preset_upsert:step2';
+const PRESET_UPSERT_OPEN_BUTTON_ID_PREFIX = 'settings:preset_upsert:open';
+const PRESET_UPSERT_MODAL_FIELD_ID = 'preset_id';
+const PRESET_UPSERT_MODAL_FIELD_NAME = 'preset_name';
+const PRESET_UPSERT_MODAL_FIELD_DESCRIPTION = 'preset_description';
+const PRESET_UPSERT_MODAL_FIELD_QUALITY = 'preset_quality';
+const PRESET_UPSERT_MODAL_FIELD_NEGATIVE = 'preset_negative';
+
+function buildPresetUpsertStep1Modal(options: {
+  userId: string;
+  id: string;
+}): ModalBuilder {
+  const modal = new ModalBuilder()
+    .setCustomId(`${PRESET_UPSERT_STEP1_MODAL_ID_PREFIX}:${options.userId}`)
+    .setTitle('新增/更新预设（第 1 步）');
+
+  const presetId = new TextInputBuilder()
+    .setCustomId(PRESET_UPSERT_MODAL_FIELD_ID)
+    .setLabel('预设 ID（字母/数字/_/-，最多 64）')
+    .setStyle(TextInputStyle.Short)
+    .setRequired(true)
+    .setMaxLength(64)
+    .setValue(options.id);
+
+  modal.addComponents(
+    new ActionRowBuilder<TextInputBuilder>().addComponents(presetId),
+  );
+
+  return modal;
+}
+
+function buildPresetUpsertStep2Modal(options: {
+  userId: string;
+  id: string;
+  name: string;
+  description: string;
+  qualityTags: string;
+  negativeTags: string;
+}): ModalBuilder {
+  const modal = new ModalBuilder()
+    .setCustomId(`${PRESET_UPSERT_STEP2_MODAL_ID_PREFIX}:${options.userId}`)
+    .setTitle('新增/更新预设（第 2 步）');
+
+  const presetId = new TextInputBuilder()
+    .setCustomId(PRESET_UPSERT_MODAL_FIELD_ID)
+    .setLabel('预设 ID（字母/数字/_/-，最多 64）')
+    .setStyle(TextInputStyle.Short)
+    .setRequired(true)
+    .setMaxLength(64)
+    .setValue(options.id);
+
+  const name = new TextInputBuilder()
+    .setCustomId(PRESET_UPSERT_MODAL_FIELD_NAME)
+    .setLabel('显示名称')
+    .setStyle(TextInputStyle.Short)
+    .setRequired(true)
+    .setMaxLength(100)
+    .setValue(options.name);
+
+  const description = new TextInputBuilder()
+    .setCustomId(PRESET_UPSERT_MODAL_FIELD_DESCRIPTION)
+    .setLabel('描述（可选）')
+    .setStyle(TextInputStyle.Paragraph)
+    .setRequired(false)
+    .setMaxLength(1000)
+    .setValue(options.description);
+
+  const quality = new TextInputBuilder()
+    .setCustomId(PRESET_UPSERT_MODAL_FIELD_QUALITY)
+    .setLabel('Quality / 正向前置 tags（可选，支持多行）')
+    .setStyle(TextInputStyle.Paragraph)
+    .setRequired(false)
+    .setMaxLength(4000)
+    .setValue(options.qualityTags);
+
+  const negative = new TextInputBuilder()
+    .setCustomId(PRESET_UPSERT_MODAL_FIELD_NEGATIVE)
+    .setLabel('Negative / 负向 tags（可选，支持多行）')
+    .setStyle(TextInputStyle.Paragraph)
+    .setRequired(false)
+    .setMaxLength(4000)
+    .setValue(options.negativeTags);
+
+  modal.addComponents(
+    new ActionRowBuilder<TextInputBuilder>().addComponents(presetId),
+    new ActionRowBuilder<TextInputBuilder>().addComponents(name),
+    new ActionRowBuilder<TextInputBuilder>().addComponents(description),
+    new ActionRowBuilder<TextInputBuilder>().addComponents(quality),
+    new ActionRowBuilder<TextInputBuilder>().addComponents(negative),
+  );
+
+  return modal;
+}
+
+export async function handlePresetUpsertModalSubmit(
+  interaction: ModalSubmitInteraction,
+): Promise<boolean> {
+  const isStep1 = interaction.customId.startsWith(
+    `${PRESET_UPSERT_STEP1_MODAL_ID_PREFIX}:`,
+  );
+  const isStep2 = interaction.customId.startsWith(
+    `${PRESET_UPSERT_STEP2_MODAL_ID_PREFIX}:`,
+  );
+  if (!isStep1 && !isStep2) return false;
+
+  const expectedUserId = interaction.customId.slice(
+    `${isStep1 ? PRESET_UPSERT_STEP1_MODAL_ID_PREFIX : PRESET_UPSERT_STEP2_MODAL_ID_PREFIX}:`
+      .length,
+  );
+
+  if (expectedUserId !== interaction.user.id) {
+    await interaction.reply({
+      content: '❌ 该表单不属于你（请重新执行命令打开表单）。',
+      ephemeral: true,
+    });
+    return true;
+  }
+
+  const userId = interaction.user.id;
+  const isAdmin = isAdminUser(userId);
+  if (!isAdmin) {
+    await interaction.reply({
+      content: '❌ 你没有权限使用此功能。',
+      ephemeral: true,
+    });
+    return true;
+  }
+
+  // Step 1: 输入 ID -> 打开 Step 2 并预填
+  if (isStep1) {
+    const id = interaction.fields.getTextInputValue(
+      PRESET_UPSERT_MODAL_FIELD_ID,
+    );
+
+    const idError = validatePresetId(id);
+    if (idError) {
+      await interaction.reply({ content: `❌ ${idError}`, ephemeral: true });
+      return true;
+    }
+
+    const trimmedId = id.trim();
+    const existing = getPreset(trimmedId);
+    const hint = existing
+      ? `✅ 已找到预设：${existing.name}（${existing.id}）`
+      : `🆕 将创建新预设：${trimmedId}`;
+
+    const button = new ButtonBuilder()
+      .setCustomId(
+        `${PRESET_UPSERT_OPEN_BUTTON_ID_PREFIX}:${interaction.user.id}:${trimmedId}`,
+      )
+      .setLabel('打开第 2 步表单')
+      .setStyle(ButtonStyle.Primary);
+
+    await interaction.reply({
+      content: `${hint}\n点击下方按钮继续编辑内容。`,
+      components: [new ActionRowBuilder<ButtonBuilder>().addComponents(button)],
+      ephemeral: true,
+    });
+    return true;
+  }
+
+  const id = interaction.fields.getTextInputValue(PRESET_UPSERT_MODAL_FIELD_ID);
+  const name = interaction.fields.getTextInputValue(
+    PRESET_UPSERT_MODAL_FIELD_NAME,
+  );
+  const description = interaction.fields.getTextInputValue(
+    PRESET_UPSERT_MODAL_FIELD_DESCRIPTION,
+  );
+  const qualityTags = interaction.fields.getTextInputValue(
+    PRESET_UPSERT_MODAL_FIELD_QUALITY,
+  );
+  const negativeTags = interaction.fields.getTextInputValue(
+    PRESET_UPSERT_MODAL_FIELD_NEGATIVE,
+  );
+
+  const idError = validatePresetId(id);
+  if (idError) {
+    await interaction.reply({ content: `❌ ${idError}`, ephemeral: true });
+    return true;
+  }
+
+  if (name.trim().length === 0) {
+    await interaction.reply({ content: '❌ name 不能为空', ephemeral: true });
+    return true;
+  }
+
+  const preset = upsertPresetNormalized({
+    id,
+    name,
+    description,
+    qualityTags,
+    negativeTags,
+  });
+
+  const embed = new EmbedBuilder()
+    .setColor(0x57f287)
+    .setTitle('✅ 已保存预设')
+    .addFields(
+      { name: 'ID', value: preset.id, inline: true },
+      { name: '名称', value: preset.name, inline: true },
+      { name: '描述', value: preset.description || '（无）' },
+      {
+        name: 'Quality（已格式化）',
+        value: preset.qualityTags || '（空）',
+      },
+      {
+        name: 'Negative（已格式化）',
+        value: preset.negativeTags || '（空）',
+      },
+    )
+    .setTimestamp();
+
+  await interaction.reply({ embeds: [embed], ephemeral: true });
+  return true;
+}
+
+export async function handlePresetUpsertOpenStep2Button(
+  interaction: ButtonInteraction,
+): Promise<boolean> {
+  if (
+    !interaction.customId.startsWith(`${PRESET_UPSERT_OPEN_BUTTON_ID_PREFIX}:`)
+  ) {
+    return false;
+  }
+
+  const parts = interaction.customId.split(':');
+  // settings:preset_upsert:open:<userId>:<presetId>
+  const expectedUserId = parts[4] ?? '';
+  const presetId = parts.slice(5).join(':');
+
+  if (expectedUserId !== interaction.user.id) {
+    await interaction.reply({
+      content: '❌ 该按钮不属于你（请重新执行命令打开表单）。',
+      ephemeral: true,
+    });
+    return true;
+  }
+
+  const userId = interaction.user.id;
+  const isAdmin = isAdminUser(userId);
+  if (!isAdmin) {
+    await interaction.reply({
+      content: '❌ 你没有权限使用此功能。',
+      ephemeral: true,
+    });
+    return true;
+  }
+
+  const idError = validatePresetId(presetId);
+  if (idError) {
+    await interaction.reply({ content: `❌ ${idError}`, ephemeral: true });
+    return true;
+  }
+
+  const existing = getPreset(presetId.trim());
+  const modal = buildPresetUpsertStep2Modal({
+    userId: interaction.user.id,
+    id: existing?.id ?? presetId.trim(),
+    name: existing?.name ?? '',
+    description: existing?.description ?? '',
+    qualityTags: existing?.qualityTags ?? '',
+    negativeTags: existing?.negativeTags ?? '',
+  });
+
+  await interaction.showModal(modal);
+  return true;
 }
 
 export const command: Command = {
@@ -100,34 +377,7 @@ export const command: Command = {
     .addSubcommand((subcommand) =>
       subcommand
         .setName('preset_upsert')
-        .setDescription('新增或更新预设 (自动格式化)')
-        .addStringOption((option) =>
-          option
-            .setName('id')
-            .setDescription('预设 ID（全局唯一）')
-            .setRequired(true),
-        )
-        .addStringOption((option) =>
-          option.setName('name').setDescription('显示名称').setRequired(true),
-        )
-        .addStringOption((option) =>
-          option
-            .setName('description')
-            .setDescription('描述（可选）')
-            .setRequired(false),
-        )
-        .addStringOption((option) =>
-          option
-            .setName('quality')
-            .setDescription('质量/正向前置 tags（可选）')
-            .setRequired(false),
-        )
-        .addStringOption((option) =>
-          option
-            .setName('negative')
-            .setDescription('负向 tags（可选）')
-            .setRequired(false),
-        ),
+        .setDescription('新增或更新预设 (自动格式化)'),
     )
     .addSubcommand((subcommand) =>
       subcommand
@@ -151,6 +401,17 @@ export const command: Command = {
     }
 
     const subcommand = interaction.options.getSubcommand();
+
+    // 预设新增/更新改用 Modal 表单输入，避免 :xxxxx: 被 Discord 表情输入干扰
+    if (subcommand === 'preset_upsert') {
+      const modal = buildPresetUpsertStep1Modal({
+        userId: interaction.user.id,
+        id: '',
+      });
+
+      await interaction.showModal(modal);
+      return;
+    }
 
     await interaction.deferReply({ ephemeral: true });
 
@@ -354,54 +615,6 @@ export const command: Command = {
           { name: '描述', value: preset.description || '（无）' },
           { name: 'Quality', value: preset.qualityTags || '（空）' },
           { name: 'Negative', value: preset.negativeTags || '（空）' },
-        )
-        .setTimestamp();
-
-      await interaction.editReply({ embeds: [embed] });
-      return;
-    }
-
-    if (subcommand === 'preset_upsert') {
-      const id = interaction.options.getString('id', true);
-      const name = interaction.options.getString('name', true);
-      const description = interaction.options.getString('description') ?? '';
-      const qualityTags = interaction.options.getString('quality') ?? '';
-      const negativeTags = interaction.options.getString('negative') ?? '';
-
-      const idError = validatePresetId(id);
-      if (idError) {
-        await interaction.editReply({ content: `❌ ${idError}` });
-        return;
-      }
-
-      if (name.trim().length === 0) {
-        await interaction.editReply({ content: '❌ name 不能为空' });
-        return;
-      }
-
-      const preset = upsertPresetNormalized({
-        id,
-        name,
-        description,
-        qualityTags,
-        negativeTags,
-      });
-
-      const embed = new EmbedBuilder()
-        .setColor(0x57f287)
-        .setTitle('✅ 已保存预设')
-        .addFields(
-          { name: 'ID', value: preset.id, inline: true },
-          { name: '名称', value: preset.name, inline: true },
-          { name: '描述', value: preset.description || '（无）' },
-          {
-            name: 'Quality（已格式化）',
-            value: preset.qualityTags || '（空）',
-          },
-          {
-            name: 'Negative（已格式化）',
-            value: preset.negativeTags || '（空）',
-          },
         )
         .setTimestamp();
 

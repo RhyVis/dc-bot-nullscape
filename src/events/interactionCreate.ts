@@ -1,5 +1,9 @@
 import { Events, Interaction } from 'discord.js';
 import { commandMap } from '../commands/registry.js';
+import {
+  handlePresetUpsertModalSubmit,
+  handlePresetUpsertOpenStep2Button,
+} from '../commands/admin/settings.js';
 import { logger } from '../core/logger.js';
 import { rateLimiter } from '../core/rateLimiter.js';
 import { getRateLimitPerMin } from '../core/settings/settingsService.js';
@@ -9,6 +13,90 @@ import { isAdminUser } from '../auth/adminAuth.js';
 export const name = Events.InteractionCreate;
 
 export async function execute(interaction: Interaction): Promise<void> {
+  if (interaction.isButton()) {
+    // settings preset_upsert 的“打开第2步”按钮
+    const isAdmin = isAdminUser(interaction.user.id);
+
+    const rateLimitResult = rateLimiter.checkAndConsume({
+      userId: interaction.user.id,
+      command: 'settings',
+      isAdmin,
+    });
+
+    if (!rateLimitResult.allowed) {
+      const waitSeconds = Math.ceil((rateLimitResult.retryAfterMs ?? 0) / 1000);
+      const limit = getRateLimitPerMin();
+
+      await interaction.reply({
+        content: `⚠️ **速率限制**: 每分钟最多 ${limit} 次，请在 ${waitSeconds} 秒后重试。`,
+        ephemeral: true,
+      });
+      return;
+    }
+
+    try {
+      const handled = await handlePresetUpsertOpenStep2Button(interaction);
+      if (!handled) return;
+    } catch (error) {
+      logger.error('Button handler error', {
+        customId: interaction.customId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+
+      await interaction.reply({
+        content: '❌ 处理按钮交互时发生错误',
+        ephemeral: true,
+      });
+    }
+
+    return;
+  }
+
+  if (interaction.isModalSubmit()) {
+    // settings preset_upsert 使用 Modal 表单提交
+    const isAdmin = isAdminUser(interaction.user.id);
+
+    // 全局速率限制（管理员绕过）
+    const rateLimitResult = rateLimiter.checkAndConsume({
+      userId: interaction.user.id,
+      command: 'settings',
+      isAdmin,
+    });
+
+    if (!rateLimitResult.allowed) {
+      const waitSeconds = Math.ceil((rateLimitResult.retryAfterMs ?? 0) / 1000);
+      const limit = getRateLimitPerMin();
+
+      await interaction.reply({
+        content: `⚠️ **速率限制**: 每分钟最多 ${limit} 次，请在 ${waitSeconds} 秒后重试。`,
+        ephemeral: true,
+      });
+      return;
+    }
+
+    try {
+      const handled = await handlePresetUpsertModalSubmit(interaction);
+      if (!handled) {
+        await interaction.reply({
+          content: '❌ 未知表单提交（可能已过期，请重试）。',
+          ephemeral: true,
+        });
+      }
+    } catch (error) {
+      logger.error('Modal submit handler error', {
+        customId: interaction.customId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+
+      await interaction.reply({
+        content: '❌ 处理表单提交时发生错误',
+        ephemeral: true,
+      });
+    }
+
+    return;
+  }
+
   if (interaction.isAutocomplete()) {
     const command = commandMap.get(interaction.commandName);
 
