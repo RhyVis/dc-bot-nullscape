@@ -1,6 +1,7 @@
 import {
   SlashCommandBuilder,
   ChatInputCommandInteraction,
+  AutocompleteInteraction,
   AttachmentBuilder,
   EmbedBuilder,
 } from 'discord.js';
@@ -13,7 +14,10 @@ import {
   SIZE_PRESETS,
   MODEL_DEFAULTS,
 } from '../../types/novelai.js';
-import { getAllPresets, getPreset } from '../../types/presets.js';
+import {
+  getPreset,
+  searchPresetSummaries,
+} from '../../core/presets/presetsService.js';
 import { generateImage } from '../../infra/novelai.js';
 import { buildFinalPrompt } from '../../domain/prompt.js';
 import { logger } from '../../core/logger.js';
@@ -42,11 +46,10 @@ const sizeChoices = Object.entries(SIZE_PRESETS).map(([value, preset]) => ({
   value,
 }));
 
-// 构建预设选项
-const presetChoices = getAllPresets().map((preset) => ({
-  name: `${preset.name} - ${preset.description}`,
-  value: preset.id,
-}));
+function truncateChoiceName(name: string, max = 100): string {
+  if (name.length <= max) return name;
+  return name.slice(0, Math.max(0, max - 1)) + '…';
+}
 
 export const command: Command = {
   data: new SlashCommandBuilder()
@@ -63,7 +66,7 @@ export const command: Command = {
         .setName('preset')
         .setDescription('风格预设 (包含质量标签和负面提示)')
         .setRequired(false)
-        .addChoices(...presetChoices),
+        .setAutocomplete(true),
     )
     .addStringOption((option) =>
       option
@@ -124,7 +127,7 @@ export const command: Command = {
     const startedAt = Date.now();
 
     const prompt = interaction.options.getString('prompt', true);
-    const presetId = interaction.options.getString('preset') ?? 'anime';
+    const presetId = interaction.options.getString('preset') ?? undefined;
     const model = (interaction.options.getString('model') ??
       'nai-diffusion-4-full') as NAIModelId;
     const sizePreset = (interaction.options.getString('size') ??
@@ -138,20 +141,13 @@ export const command: Command = {
     const seed = interaction.options.getInteger('seed') ?? undefined;
 
     try {
-      // 获取预设
-      const preset = getPreset(presetId);
-      if (!preset) {
-        const errorEmbed = new EmbedBuilder()
-          .setColor(0xed4245)
-          .setTitle('❌ 错误')
-          .setDescription(`未找到预设 \`${presetId}\``);
-
-        await interaction.editReply({
-          content: null,
-          embeds: [errorEmbed],
-        });
-        return;
-      }
+      // 获取预设（可选；未指定或不存在则按“无预设”处理）
+      const preset = presetId ? getPreset(presetId) : null;
+      const presetDisplay = preset
+        ? preset.name
+        : presetId
+          ? `（未找到: ${presetId}）`
+          : '（无）';
 
       // 获取模型默认值
       const modelDefaults =
@@ -172,7 +168,7 @@ export const command: Command = {
       const finalPrompt = buildFinalPrompt({
         scenePrompt: prompt,
         userNegative,
-        preset,
+        preset: preset ?? undefined,
         model,
       });
 
@@ -192,7 +188,7 @@ export const command: Command = {
           },
           {
             name: '🎭 预设',
-            value: preset.name,
+            value: presetDisplay,
           },
           {
             name: '🎨 模型',
@@ -249,7 +245,7 @@ export const command: Command = {
           },
           {
             name: '🎭 预设',
-            value: preset.name,
+            value: finalPrompt.presetName,
           },
           {
             name: '🎨 模型',
@@ -316,5 +312,23 @@ export const command: Command = {
         error: errorMessage,
       });
     }
+  },
+
+  async autocomplete(interaction: AutocompleteInteraction) {
+    const focused = interaction.options.getFocused(true);
+    if (focused.name !== 'preset') {
+      await interaction.respond([]);
+      return;
+    }
+
+    const query = String(focused.value ?? '');
+    const items = searchPresetSummaries(query, 25);
+
+    await interaction.respond(
+      items.slice(0, 25).map((p) => ({
+        name: truncateChoiceName(`${p.name} (${p.id})`),
+        value: p.id,
+      })),
+    );
   },
 };

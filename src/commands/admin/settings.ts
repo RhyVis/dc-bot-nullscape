@@ -6,12 +6,28 @@ import {
 import { Command } from '../../types/commands.js';
 import { isAdminUser } from '../../auth/adminAuth.js';
 import {
+  deletePresetById,
+  getPreset,
+  listPresetSummaries,
+  upsertPresetNormalized,
+} from '../../core/presets/presetsService.js';
+import {
   getRuntimeSettings,
   setRateLimitPerMin,
   setLimitMode,
   setAllowedGuildIds,
   setAllowedChannelIds,
 } from '../../core/settings/settingsService.js';
+
+function validatePresetId(id: string): string | null {
+  const trimmed = id.trim();
+  if (trimmed.length === 0) return 'preset id 不能为空';
+  if (trimmed.length > 64) return 'preset id 过长（最多 64 字符）';
+  if (!/^[a-zA-Z0-9_-]+$/.test(trimmed)) {
+    return 'preset id 仅允许字母、数字、下划线、短横线';
+  }
+  return null;
+}
 
 export const command: Command = {
   data: new SlashCommandBuilder()
@@ -68,6 +84,57 @@ export const command: Command = {
             .setName('ids')
             .setDescription('如：123,456；设置为空字符串可清空')
             .setRequired(true),
+        ),
+    )
+    .addSubcommand((subcommand) =>
+      subcommand.setName('preset_list').setDescription('列出预设 (最多 25 条)'),
+    )
+    .addSubcommand((subcommand) =>
+      subcommand
+        .setName('preset_get')
+        .setDescription('查看指定预设')
+        .addStringOption((option) =>
+          option.setName('id').setDescription('预设 ID').setRequired(true),
+        ),
+    )
+    .addSubcommand((subcommand) =>
+      subcommand
+        .setName('preset_upsert')
+        .setDescription('新增或更新预设 (自动格式化)')
+        .addStringOption((option) =>
+          option
+            .setName('id')
+            .setDescription('预设 ID（全局唯一）')
+            .setRequired(true),
+        )
+        .addStringOption((option) =>
+          option.setName('name').setDescription('显示名称').setRequired(true),
+        )
+        .addStringOption((option) =>
+          option
+            .setName('description')
+            .setDescription('描述（可选）')
+            .setRequired(false),
+        )
+        .addStringOption((option) =>
+          option
+            .setName('quality')
+            .setDescription('质量/正向前置 tags（可选）')
+            .setRequired(false),
+        )
+        .addStringOption((option) =>
+          option
+            .setName('negative')
+            .setDescription('负向 tags（可选）')
+            .setRequired(false),
+        ),
+    )
+    .addSubcommand((subcommand) =>
+      subcommand
+        .setName('preset_delete')
+        .setDescription('删除指定预设')
+        .addStringOption((option) =>
+          option.setName('id').setDescription('预设 ID').setRequired(true),
         ),
     ),
 
@@ -245,6 +312,118 @@ export const command: Command = {
         .setTimestamp();
 
       await interaction.editReply({ embeds: [embed] });
+      return;
+    }
+
+    if (subcommand === 'preset_list') {
+      const items = listPresetSummaries(25);
+      const lines =
+        items.length === 0
+          ? '（暂无预设）'
+          : items.map((p) => `• ${p.id} - ${p.name}`).join('\n');
+
+      const embed = new EmbedBuilder()
+        .setColor(0x7289da)
+        .setTitle('🎭 预设列表')
+        .setDescription(lines)
+        .setTimestamp();
+
+      await interaction.editReply({ embeds: [embed] });
+      return;
+    }
+
+    if (subcommand === 'preset_get') {
+      const id = interaction.options.getString('id', true);
+      const idError = validatePresetId(id);
+      if (idError) {
+        await interaction.editReply({ content: `❌ ${idError}` });
+        return;
+      }
+
+      const preset = getPreset(id);
+      if (!preset) {
+        await interaction.editReply({ content: `❌ 未找到预设: ${id}` });
+        return;
+      }
+
+      const embed = new EmbedBuilder()
+        .setColor(0x7289da)
+        .setTitle(`🎭 预设: ${preset.id}`)
+        .addFields(
+          { name: '名称', value: preset.name },
+          { name: '描述', value: preset.description || '（无）' },
+          { name: 'Quality', value: preset.qualityTags || '（空）' },
+          { name: 'Negative', value: preset.negativeTags || '（空）' },
+        )
+        .setTimestamp();
+
+      await interaction.editReply({ embeds: [embed] });
+      return;
+    }
+
+    if (subcommand === 'preset_upsert') {
+      const id = interaction.options.getString('id', true);
+      const name = interaction.options.getString('name', true);
+      const description = interaction.options.getString('description') ?? '';
+      const qualityTags = interaction.options.getString('quality') ?? '';
+      const negativeTags = interaction.options.getString('negative') ?? '';
+
+      const idError = validatePresetId(id);
+      if (idError) {
+        await interaction.editReply({ content: `❌ ${idError}` });
+        return;
+      }
+
+      if (name.trim().length === 0) {
+        await interaction.editReply({ content: '❌ name 不能为空' });
+        return;
+      }
+
+      const preset = upsertPresetNormalized({
+        id,
+        name,
+        description,
+        qualityTags,
+        negativeTags,
+      });
+
+      const embed = new EmbedBuilder()
+        .setColor(0x57f287)
+        .setTitle('✅ 已保存预设')
+        .addFields(
+          { name: 'ID', value: preset.id, inline: true },
+          { name: '名称', value: preset.name, inline: true },
+          { name: '描述', value: preset.description || '（无）' },
+          {
+            name: 'Quality（已格式化）',
+            value: preset.qualityTags || '（空）',
+          },
+          {
+            name: 'Negative（已格式化）',
+            value: preset.negativeTags || '（空）',
+          },
+        )
+        .setTimestamp();
+
+      await interaction.editReply({ embeds: [embed] });
+      return;
+    }
+
+    if (subcommand === 'preset_delete') {
+      const id = interaction.options.getString('id', true);
+      const idError = validatePresetId(id);
+      if (idError) {
+        await interaction.editReply({ content: `❌ ${idError}` });
+        return;
+      }
+
+      const deleted = deletePresetById(id);
+      if (!deleted) {
+        await interaction.editReply({ content: `⚠️ 未找到预设: ${id}` });
+        return;
+      }
+
+      await interaction.editReply({ content: `✅ 已删除预设: ${id}` });
       return;
     }
 

@@ -9,6 +9,35 @@ import { isAdminUser } from '../auth/adminAuth.js';
 export const name = Events.InteractionCreate;
 
 export async function execute(interaction: Interaction): Promise<void> {
+  if (interaction.isAutocomplete()) {
+    const command = commandMap.get(interaction.commandName);
+
+    if (!command) {
+      logger.warn('Unknown command received (autocomplete)', {
+        commandName: interaction.commandName,
+      });
+      await interaction.respond([]);
+      return;
+    }
+
+    if (!command.autocomplete) {
+      await interaction.respond([]);
+      return;
+    }
+
+    try {
+      await command.autocomplete(interaction);
+    } catch (error) {
+      logger.error('Autocomplete handler error', {
+        command: interaction.commandName,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      await interaction.respond([]);
+    }
+
+    return;
+  }
+
   if (!interaction.isChatInputCommand()) return;
 
   const command = commandMap.get(interaction.commandName);

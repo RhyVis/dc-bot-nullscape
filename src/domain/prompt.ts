@@ -11,8 +11,8 @@ export interface BuildPromptOptions {
   scenePrompt: string;
   /** 用户输入的额外负向提示词（可选） */
   userNegative?: string;
-  /** 预设对象 */
-  preset: PromptPreset;
+  /** 预设对象（可选；留空表示不添加任何预设标签） */
+  preset?: PromptPreset;
   /** 目标模型 ID */
   model: string;
 }
@@ -37,7 +37,7 @@ export function buildFinalPrompt(options: BuildPromptOptions): BuiltPrompt {
   // 组合正向提示词
   const positiveParts: string[] = [];
 
-  if (preset.qualityTags) {
+  if (preset?.qualityTags) {
     positiveParts.push(preset.qualityTags);
   }
 
@@ -48,7 +48,7 @@ export function buildFinalPrompt(options: BuildPromptOptions): BuiltPrompt {
   // 组合负向提示词
   const negativeParts: string[] = [];
 
-  if (preset.negativeTags) {
+  if (preset?.negativeTags) {
     negativeParts.push(preset.negativeTags);
   }
 
@@ -63,7 +63,7 @@ export function buildFinalPrompt(options: BuildPromptOptions): BuiltPrompt {
   return {
     positive: autoConvertSyntax(rawPositive, model),
     negative: autoConvertSyntax(rawNegative, model),
-    presetName: preset.name,
+    presetName: preset?.name ?? '（无）',
   };
 }
 

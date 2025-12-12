@@ -24,6 +24,19 @@ export function getDb(): Database.Database {
     );
   `);
 
+  // 初始化 presets 表（提示词预设，完全由管理员维护）
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS presets (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      description TEXT NOT NULL,
+      quality_tags TEXT NOT NULL,
+      negative_tags TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+  `);
+
   logger.info('SQLite database initialized', { dbPath });
 
   return db;
