@@ -5,12 +5,13 @@
     "main": "dist/index.js",
     "type": "module",
     "scripts": {
-        "build": "tsup",
+        "build": "vite build && pnpm build:types",
+        "build:types": "tsc -p tsconfig.build.json",
         "start": "node dist/index.js",
-        "dev": "tsx watch src/index.ts",
-        "deploy": "tsx src/deploy-commands.ts",
-        "lint": "eslint src --ext .ts",
-        "typecheck": "tsc --noEmit"
+        "dev": "vite-node --watch src/index.ts",
+        "deploy": "vite-node src/deploy-commands.ts",
+        "typecheck": "tsc --noEmit",
+        "format": "prettier --write \"src/**/*.{js,ts,jsx,tsx,json,md}\""
     },
     "keywords": [
         "discord",
@@ -32,10 +33,17 @@
         "openai": "^4.72.0"
     },
     "devDependencies": {
+        "@types/better-sqlite3": "^7.6.13",
         "@types/node": "^22.9.0",
-        "tsup": "^8.3.5",
-        "tsx": "^4.19.2",
-        "typescript": "^5.6.3"
+        "prettier": "^3.7.4",
+        "typescript": "^5.6.3",
+        "vite": "^7.2.7",
+        "vite-node": "^5.2.0"
+    },
+    "pnpm": {
+        "onlyBuiltDependencies": [
+            "esbuild"
+        ]
     },
     "packageManager": "pnpm@10.23.0+sha512.21c4e5698002ade97e4efe8b8b4a89a8de3c85a37919f957e7a0f30f38fbc5bbdd05980ffe29179b2fb6e6e691242e098d945d1601772cad0fef5fb6411e2a4b"
 }

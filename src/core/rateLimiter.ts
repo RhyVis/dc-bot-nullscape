@@ -1,5 +1,5 @@
-import { logger } from "./logger.js";
-import { getRateLimitPerMin } from "../services/settingsService.js";
+import { logger } from './logger.js';
+import { getRateLimitPerMin } from './settings/settingsService.js';
 
 interface CheckOptions {
   userId: string;
@@ -42,7 +42,7 @@ export const rateLimiter = {
 
     if (count >= limit) {
       const retryAfterMs = WINDOW_MS - (now - windowStart);
-      logger.warn("Rate limit hit", {
+      logger.warn('Rate limit hit', {
         userId: options.userId,
         command: options.command,
         limit,

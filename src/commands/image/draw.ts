@@ -3,8 +3,8 @@ import {
   ChatInputCommandInteraction,
   AttachmentBuilder,
   EmbedBuilder,
-} from "discord.js";
-import { Command } from "../../types/commands.js";
+} from 'discord.js';
+import { Command } from '../../types/commands.js';
 import {
   NAI_MODELS,
   NAI_SAMPLERS,
@@ -12,17 +12,17 @@ import {
   NAISampler,
   SIZE_PRESETS,
   MODEL_DEFAULTS,
-} from "../../types/novelai.js";
-import { getAllPresets, getPreset } from "../../types/presets.js";
-import { generateImage } from "../../services/novelai.js";
-import { buildFinalPrompt } from "../../services/prompt.js";
-import { logger } from "../../utils/logger.js";
+} from '../../types/novelai.js';
+import { getAllPresets, getPreset } from '../../types/presets.js';
+import { generateImage } from '../../infra/novelai.js';
+import { buildFinalPrompt } from '../../domain/prompt.js';
+import { logger } from '../../core/logger.js';
 import {
   createPlaceholder,
   runWithInteractionTimeout,
-} from "../../utils/interactionPlaceholder.js";
-import { applyLimitModeToSize } from "../../utils/limitMode.js";
-import { formatDuration } from "../../utils/duration.js";
+} from '../../utils/interactionPlaceholder.js';
+import { applyLimitModeToSize } from '../../core/limitMode.js';
+import { formatDuration } from '../../utils/duration.js';
 
 // 构建模型选项
 const modelChoices = Object.entries(NAI_MODELS).map(([value, name]) => ({
@@ -50,71 +50,71 @@ const presetChoices = getAllPresets().map((preset) => ({
 
 export const command: Command = {
   data: new SlashCommandBuilder()
-    .setName("draw")
-    .setDescription("使用 NovelAI 生成图片 (支持预设风格)")
+    .setName('draw')
+    .setDescription('使用 NovelAI 生成图片 (支持预设风格)')
     .addStringOption((option) =>
       option
-        .setName("prompt")
-        .setDescription("场景描述标签 (英文，使用 <tag:1.5> 格式强调)")
-        .setRequired(true)
+        .setName('prompt')
+        .setDescription('场景描述标签 (英文，使用 <tag:1.5> 格式强调)')
+        .setRequired(true),
     )
     .addStringOption((option) =>
       option
-        .setName("preset")
-        .setDescription("风格预设 (包含质量标签和负面提示)")
+        .setName('preset')
+        .setDescription('风格预设 (包含质量标签和负面提示)')
         .setRequired(false)
-        .addChoices(...presetChoices)
+        .addChoices(...presetChoices),
     )
     .addStringOption((option) =>
       option
-        .setName("model")
-        .setDescription("选择模型")
+        .setName('model')
+        .setDescription('选择模型')
         .setRequired(false)
-        .addChoices(...modelChoices)
+        .addChoices(...modelChoices),
     )
     .addStringOption((option) =>
       option
-        .setName("size")
-        .setDescription("图片尺寸")
+        .setName('size')
+        .setDescription('图片尺寸')
         .setRequired(false)
-        .addChoices(...sizeChoices)
+        .addChoices(...sizeChoices),
     )
     .addStringOption((option) =>
       option
-        .setName("negative")
-        .setDescription("额外负向提示词 (会与预设合并)")
-        .setRequired(false)
+        .setName('negative')
+        .setDescription('额外负向提示词 (会与预设合并)')
+        .setRequired(false),
     )
     .addStringOption((option) =>
       option
-        .setName("sampler")
-        .setDescription("采样器")
+        .setName('sampler')
+        .setDescription('采样器')
         .setRequired(false)
-        .addChoices(...samplerChoices)
+        .addChoices(...samplerChoices),
     )
     .addIntegerOption((option) =>
       option
-        .setName("steps")
-        .setDescription("采样步数 (1-50)")
+        .setName('steps')
+        .setDescription('采样步数 (1-50)')
         .setRequired(false)
         .setMinValue(1)
-        .setMaxValue(50)
+        .setMaxValue(50),
     )
     .addNumberOption((option) =>
       option
-        .setName("scale")
-        .setDescription("CFG Scale (1-10)")
+        .setName('scale')
+        .setDescription('CFG Scale (1-10)')
         .setRequired(false)
         .setMinValue(1)
-        .setMaxValue(10)
+        .setMaxValue(10),
     )
     .addIntegerOption((option) =>
       option
-        .setName("seed")
-        .setDescription("随机种子 (留空则随机)")
+        .setName('seed')
+        .setDescription('随机种子 (留空则随机)')
         .setRequired(false)
         .setMinValue(0)
-        .setMaxValue(4294967295)
+        .setMaxValue(4294967295),
     ),
 
   async execute(interaction: ChatInputCommandInteraction) {
@@ -123,18 +123,19 @@ export const command: Command = {
 
     const startedAt = Date.now();
 
-    const prompt = interaction.options.getString("prompt", true);
-    const presetId = interaction.options.getString("preset") ?? "anime";
-    const model = (interaction.options.getString("model") ??
-      "nai-diffusion-4-curated") as NAIModelId;
-    const sizePreset = interaction.options.getString("size") ?? "portrait";
-    const userNegative = interaction.options.getString("negative") ?? undefined;
+    const prompt = interaction.options.getString('prompt', true);
+    const presetId = interaction.options.getString('preset') ?? 'anime';
+    const model = (interaction.options.getString('model') ??
+      'nai-diffusion-4-full') as NAIModelId;
+    const sizePreset = (interaction.options.getString('size') ??
+      'portrait_small') as keyof typeof SIZE_PRESETS;
+    const userNegative = interaction.options.getString('negative') ?? undefined;
     const sampler = interaction.options.getString(
-      "sampler"
+      'sampler',
     ) as NAISampler | null;
-    const steps = interaction.options.getInteger("steps");
-    const scale = interaction.options.getNumber("scale");
-    const seed = interaction.options.getInteger("seed") ?? undefined;
+    const steps = interaction.options.getInteger('steps');
+    const scale = interaction.options.getNumber('scale');
+    const seed = interaction.options.getInteger('seed') ?? undefined;
 
     try {
       // 获取预设
@@ -142,7 +143,7 @@ export const command: Command = {
       if (!preset) {
         const errorEmbed = new EmbedBuilder()
           .setColor(0xed4245)
-          .setTitle("❌ 错误")
+          .setTitle('❌ 错误')
           .setDescription(`未找到预设 \`${presetId}\``);
 
         await interaction.editReply({
@@ -154,13 +155,17 @@ export const command: Command = {
 
       // 获取模型默认值
       const modelDefaults =
-        MODEL_DEFAULTS[model] ?? MODEL_DEFAULTS["nai-diffusion-4-curated"];
+        MODEL_DEFAULTS[model] ?? MODEL_DEFAULTS['nai-diffusion-4-full'];
 
       // 解析尺寸预设
       const size =
         SIZE_PRESETS[sizePreset as keyof typeof SIZE_PRESETS] ??
         SIZE_PRESETS.portrait;
-      const limitedSize = applyLimitModeToSize(size.width, size.height);
+      const limitedSize = applyLimitModeToSize(
+        size.width,
+        size.height,
+        String(sizePreset),
+      );
       const { width, height } = limitedSize;
 
       // 组装最终提示词
@@ -174,37 +179,37 @@ export const command: Command = {
       // 截断显示的 prompt 供占位与展示使用
       const displayPrompt =
         finalPrompt.positive.length > 150
-          ? finalPrompt.positive.substring(0, 150) + "..."
+          ? finalPrompt.positive.substring(0, 150) + '...'
           : finalPrompt.positive;
 
       // 创建占位 embed
       const placeholder = await createPlaceholder(interaction, {
-        title: "🎨 正在生成图片...",
+        title: '🎨 正在生成图片...',
         fields: [
           {
-            name: "📝 Prompt",
+            name: '📝 Prompt',
             value: `\`${displayPrompt}\``,
           },
           {
-            name: "🎭 预设",
+            name: '🎭 预设',
             value: preset.name,
           },
           {
-            name: "🎨 模型",
+            name: '🎨 模型',
             value: NAI_MODELS[model],
           },
           {
-            name: "📐 尺寸",
+            name: '📐 尺寸',
             value: `${width}x${height}`,
           },
           {
-            name: "👤 用户",
+            name: '👤 用户',
             value: `<@${interaction.user.id}>`,
           },
           ...(limitedSize.limited
             ? [
                 {
-                  name: "⛔ 限制模式",
+                  name: '⛔ 限制模式',
                   value: `已从 ${limitedSize.originalWidth}x${limitedSize.originalHeight} 调整为 ${width}x${height}`,
                 },
               ]
@@ -223,7 +228,7 @@ export const command: Command = {
           scale: scale ?? modelDefaults.scale,
           sampler: sampler ?? modelDefaults.sampler,
           seed,
-        })
+        }),
       );
 
       const attachmentName = `draw_${result.seed}.png`;
@@ -236,40 +241,40 @@ export const command: Command = {
       const durationText = formatDuration(Date.now() - startedAt);
 
       await placeholder.updateSuccess({
-        title: "✨ 生成完成",
+        title: '✨ 生成完成',
         fields: [
           {
-            name: "📝 Prompt",
+            name: '📝 Prompt',
             value: `\`${displayPrompt}\``,
           },
           {
-            name: "🎭 预设",
+            name: '🎭 预设',
             value: preset.name,
           },
           {
-            name: "🎨 模型",
+            name: '🎨 模型',
             value: NAI_MODELS[model],
           },
           {
-            name: "🌱 Seed",
+            name: '🌱 Seed',
             value: `\`${result.seed}\``,
           },
           {
-            name: "📐 尺寸",
+            name: '📐 尺寸',
             value: `${width}x${height}`,
           },
           {
-            name: "👤 用户",
+            name: '👤 用户',
             value: `<@${interaction.user.id}>`,
           },
           {
-            name: "⏱ 耗时",
+            name: '⏱ 耗时',
             value: durationText,
           },
           ...(limitedSize.limited
             ? [
                 {
-                  name: "⛔ 限制模式",
+                  name: '⛔ 限制模式',
                   value: `已从 ${limitedSize.originalWidth}x${limitedSize.originalHeight} 调整为 ${width}x${height}`,
                 },
               ]
@@ -289,14 +294,14 @@ export const command: Command = {
       });
     } catch (error) {
       const errorMessage =
-        error instanceof Error ? error.message : "Unknown error";
+        error instanceof Error ? error.message : 'Unknown error';
 
       await interaction.editReply({
         content: null,
         embeds: [
           new EmbedBuilder()
             .setColor(0xed4245)
-            .setTitle("❌ 生成失败")
+            .setTitle('❌ 生成失败')
             .setDescription(errorMessage),
         ],
       });
@@ -304,7 +309,7 @@ export const command: Command = {
       logger.logGeneration({
         userId: interaction.user.id,
         username: interaction.user.username,
-        prompt: "err",
+        prompt: 'err',
         model,
         seed: seed ?? 0,
         success: false,

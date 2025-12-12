@@ -7,14 +7,12 @@ Discord Bot with NovelAI image generation and LLM tag translation.
 ### Commands
 
 - 🖌️ **`/draw`** - Generate images with tags directly
-
   - Input tags with optional emphasis syntax: `<tag:1.5>`
   - Select style presets (Anime, Realistic, Artistic, Furry, None)
   - Support for V3, V4, V4.5 models
   - Customizable size, sampler, steps, CFG scale, and seed
 
 - ✨ **`/imagine`** - Natural language to image (one step)
-
   - Describe in any language, AI translates and generates
   - Automatic tag translation with emphasis
   - Same preset and model options as `/draw`
@@ -63,7 +61,7 @@ Unified emphasis syntax `<tag:weight>` automatically converts to:
 2. Install dependencies:
 
    ```bash
-   npm install
+   pnpm install
    ```
 
 3. Copy `.env.example` to `.env` and fill in your credentials:
@@ -75,14 +73,14 @@ Unified emphasis syntax `<tag:weight>` automatically converts to:
 4. Deploy slash commands to Discord:
 
    ```bash
-   npm run deploy
+   pnpm deploy
    ```
 
 5. Start the bot:
    ```bash
-   npm run dev    # Development with hot reload
-   npm run build  # Build for production
-   npm start      # Run production build
+   pnpm dev    # Development with hot reload
+   pnpm build  # Build for production
+   pnpm start  # Run production build
    ```
 
 ## Environment Variables

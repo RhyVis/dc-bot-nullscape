@@ -1,11 +1,6 @@
-import { config } from '../core/config.js';
-import { logger } from '../core/logger.js';
-import {
-  getSetting,
-  setSetting,
-  getAllSettings,
-  SettingKey,
-} from './settingsStore.js';
+import { config } from '../config.js';
+import { logger } from '../logger.js';
+import { getSetting, setSetting, getAllSettings } from './settingsStore.js';
 
 export interface RuntimeSettings {
   rateLimitPerMin: number;

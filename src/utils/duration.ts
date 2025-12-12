@@ -19,7 +19,7 @@ export function formatDuration(ms: number): string {
     const hours = Math.floor(minutes / 60);
     const remainingMinutes = minutes - hours * 60;
     return `${hours} 小时 ${remainingMinutes} 分 ${remainingSeconds.toFixed(
-      0
+      0,
     )} 秒`;
   }
 

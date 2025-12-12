@@ -8,20 +8,23 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends python3 make g++ \
     && rm -rf /var/lib/apt/lists/*
 
+# Use pnpm via Corepack
+RUN corepack enable
+
 # Copy package files
-COPY package*.json ./
+COPY package.json pnpm-lock.yaml ./
 
 # Install all dependencies (including devDependencies for building)
-RUN npm ci
+RUN pnpm install --frozen-lockfile
 
 # Copy source code
 COPY . .
 
 # Build TypeScript
-RUN npm run build
+RUN pnpm build
 
 # Drop dev dependencies to shrink what we ship
-RUN npm prune --omit=dev && npm cache clean --force
+RUN pnpm prune --prod && pnpm store prune
 
 # Production stage
 FROM node:22-slim AS runner
@@ -34,7 +37,8 @@ RUN groupadd -g 1001 nodejs && \
 
 # Copy built files and production dependencies
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/package.json ./
+COPY --from=builder /app/pnpm-lock.yaml ./
 COPY --from=builder /app/node_modules ./node_modules
 
 # Change ownership to non-root user

@@ -16,7 +16,7 @@
  * - 负向强调: -1::tag :: (V4.5+) 或 0.5::tag :: (V4)
  */
 
-import { V4_MODELS, NAIModelId } from "../types/novelai.js";
+import { V4_MODELS, NAIModelId } from '../types/novelai.js';
 
 /** 检查是否为 V4+ 模型 */
 function isV4Model(model: string): boolean {
@@ -25,7 +25,7 @@ function isV4Model(model: string): boolean {
 
 /** 检查是否为 V4.5 模型（支持负向数值强调） */
 function isV45Model(model: string): boolean {
-  return model.includes("4-5");
+  return model.includes('4-5');
 }
 
 /**
@@ -40,11 +40,15 @@ const EMPHASIS_REGEX = /<([^:>]+)(?::([+-]?\d*\.?\d+))?>/g;
  */
 const V3_BRACE_REGEX = /(\{+)([^{}]+)(\}+)|(\[+)([^\[\]]+)(\]+)/g;
 
+const V3_BRACE_TEST_REGEX = /(\{+)([^{}]+)(\}+)|(\[+)([^\[\]]+)(\]+)/;
+
 /**
  * V4 数值语法的正则表达式
  * 匹配: 1.5::tag ::, -1::tag ::
  */
 const V4_NUMERIC_REGEX = /([+-]?\d*\.?\d+)::([^:]+)::/g;
+
+const V4_NUMERIC_TEST_REGEX = /([+-]?\d*\.?\d+)::([^:]+)::/;
 
 /**
  * 将权重值转换为 V3 花括号数量
@@ -56,14 +60,14 @@ function weightToV3Braces(weight: number): { char: string; count: number } {
     // 正向强调用 {}
     // 每个 {} 是 1.05x，计算需要多少层
     const layers = Math.round(Math.log(weight) / Math.log(1.05));
-    return { char: "{}", count: Math.max(1, Math.min(layers, 5)) };
+    return { char: '{}', count: Math.max(1, Math.min(layers, 5)) };
   } else if (weight > 0) {
     // 弱化用 []
     const layers = Math.round(Math.log(1 / weight) / Math.log(1.05));
-    return { char: "[]", count: Math.max(1, Math.min(layers, 5)) };
+    return { char: '[]', count: Math.max(1, Math.min(layers, 5)) };
   } else {
     // 负向强调在 V3 中不直接支持，用多层 [] 模拟
-    return { char: "[]", count: 5 };
+    return { char: '[]', count: 5 };
   }
 }
 
@@ -164,12 +168,12 @@ export function normalizeEmphasis(text: string): string {
   let result = text;
 
   // 先尝试转换 V3 语法
-  if (V3_BRACE_REGEX.test(result)) {
+  if (V3_BRACE_TEST_REGEX.test(result)) {
     result = parseV3ToUnified(result);
   }
 
   // 再尝试转换 V4 语法
-  if (V4_NUMERIC_REGEX.test(result)) {
+  if (V4_NUMERIC_TEST_REGEX.test(result)) {
     result = parseV4ToUnified(result);
   }
 

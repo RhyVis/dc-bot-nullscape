@@ -3,8 +3,8 @@
  * 将预设标签、用户提示词组合并转换为目标模型格式
  */
 
-import { PromptPreset } from "../types/presets.js";
-import { autoConvertSyntax } from "./syntax.js";
+import { PromptPreset } from '../types/presets.js';
+import { autoConvertSyntax } from './syntax.js';
 
 export interface BuildPromptOptions {
   /** 用户输入的场景描述标签 */
@@ -57,8 +57,8 @@ export function buildFinalPrompt(options: BuildPromptOptions): BuiltPrompt {
   }
 
   // 合并并转换语法
-  const rawPositive = positiveParts.join(", ");
-  const rawNegative = negativeParts.join(", ");
+  const rawPositive = positiveParts.join(', ');
+  const rawNegative = negativeParts.join(', ');
 
   return {
     positive: autoConvertSyntax(rawPositive, model),

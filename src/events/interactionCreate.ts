@@ -1,35 +1,37 @@
-import { Events, Interaction } from "discord.js";
-import { draw, imagine, translate, settings } from "../commands/index.js";
-import { logger } from "../utils/logger.js";
-import { config } from "../utils/config.js";
-import { rateLimiter } from "../utils/rateLimiter.js";
-import { getRateLimitPerMin } from "../services/settingsService.js";
-import { Command } from "../types/commands.js";
-
-// 命令映射
-const commands = new Map<string, Command>([
-  ["draw", { data: draw.data, execute: draw.execute }],
-  ["imagine", { data: imagine.data, execute: imagine.execute }],
-  ["translate", { data: translate.data, execute: translate.execute }],
-  ["settings", { data: settings.data, execute: settings.execute }],
-]);
+import { Events, Interaction } from 'discord.js';
+import { commandMap } from '../commands/registry.js';
+import { logger } from '../core/logger.js';
+import { rateLimiter } from '../core/rateLimiter.js';
+import { getRateLimitPerMin } from '../core/settings/settingsService.js';
+import { checkInteractionAccess } from '../auth/accessControl.js';
+import { isAdminUser } from '../auth/adminAuth.js';
 
 export const name = Events.InteractionCreate;
 
 export async function execute(interaction: Interaction): Promise<void> {
   if (!interaction.isChatInputCommand()) return;
 
-  const command = commands.get(interaction.commandName);
+  const command = commandMap.get(interaction.commandName);
 
   if (!command) {
-    logger.warn("Unknown command received", {
+    logger.warn('Unknown command received', {
       commandName: interaction.commandName,
     });
     return;
   }
 
+  // 服务器/频道访问控制（settings 命令跳过该限制以便配置）
+  const access = checkInteractionAccess(interaction);
+  if (!access.ok) {
+    await interaction.reply({
+      content: `❌ ${access.reason}`,
+      ephemeral: true,
+    });
+    return;
+  }
+
   // 全局速率限制（管理员绕过）
-  const isAdmin = config.discord.adminIds.includes(interaction.user.id);
+  const isAdmin = isAdminUser(interaction.user.id);
   const rateLimitResult = rateLimiter.checkAndConsume({
     userId: interaction.user.id,
     command: interaction.commandName,
@@ -48,7 +50,7 @@ export async function execute(interaction: Interaction): Promise<void> {
   }
 
   try {
-    logger.info("Executing command", {
+    logger.info('Executing command', {
       command: interaction.commandName,
       userId: interaction.user.id,
       username: interaction.user.username,
@@ -57,12 +59,12 @@ export async function execute(interaction: Interaction): Promise<void> {
 
     await command.execute(interaction);
   } catch (error) {
-    logger.error("Command execution error", {
+    logger.error('Command execution error', {
       command: interaction.commandName,
-      error: error instanceof Error ? error.message : "Unknown error",
+      error: error instanceof Error ? error.message : 'Unknown error',
     });
 
-    const errorMessage = "❌ 执行命令时发生错误";
+    const errorMessage = '❌ 执行命令时发生错误';
 
     if (interaction.replied || interaction.deferred) {
       await interaction.followUp({ content: errorMessage, ephemeral: true });

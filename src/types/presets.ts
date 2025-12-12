@@ -14,7 +14,7 @@ export interface PromptPreset {
   /** 负向提示词 */
   negativeTags: string;
   /** 适用的模型类型 */
-  modelType: "all" | "v3" | "v4";
+  modelType: 'all' | 'v3' | 'v4';
 }
 
 /**
@@ -23,58 +23,58 @@ export interface PromptPreset {
 export const PROMPT_PRESETS: Record<string, PromptPreset> = {
   // 通用动漫风格 - 默认预设
   anime: {
-    id: "anime",
-    name: "🎨 Anime",
-    description: "通用动漫插画风格，高质量输出",
-    qualityTags: "masterpiece, best quality, very aesthetic, absurdres",
+    id: 'anime',
+    name: '🎨 Anime',
+    description: '通用动漫插画风格，高质量输出',
+    qualityTags: 'masterpiece, best quality, very aesthetic, absurdres',
     negativeTags:
-      "lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry, artist name",
-    modelType: "all",
+      'lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry, artist name',
+    modelType: 'all',
   },
 
   // 写实风格
   realistic: {
-    id: "realistic",
-    name: "📷 Realistic",
-    description: "写实照片风格",
+    id: 'realistic',
+    name: '📷 Realistic',
+    description: '写实照片风格',
     qualityTags:
-      "photorealistic, best quality, amazing quality, very aesthetic, absurdres, ultra detailed",
+      'photorealistic, best quality, amazing quality, very aesthetic, absurdres, ultra detailed',
     negativeTags:
-      "illustration, painting, drawing, art, sketch, anime, cartoon, 3d render, lowres, bad anatomy, bad hands, text, error, cropped, worst quality, low quality, jpeg artifacts, signature, watermark, username, blurry",
-    modelType: "all",
+      'illustration, painting, drawing, art, sketch, anime, cartoon, 3d render, lowres, bad anatomy, bad hands, text, error, cropped, worst quality, low quality, jpeg artifacts, signature, watermark, username, blurry',
+    modelType: 'all',
   },
 
   // 艺术绘画风格
   artistic: {
-    id: "artistic",
-    name: "🖼️ Artistic",
-    description: "艺术绘画风格，如油画、水彩等",
+    id: 'artistic',
+    name: '🖼️ Artistic',
+    description: '艺术绘画风格，如油画、水彩等',
     qualityTags:
-      "masterpiece, best quality, very aesthetic, artistic, detailed",
+      'masterpiece, best quality, very aesthetic, artistic, detailed',
     negativeTags:
-      "lowres, bad anatomy, text, error, cropped, worst quality, low quality, jpeg artifacts, signature, watermark, blurry, photo, photorealistic",
-    modelType: "all",
+      'lowres, bad anatomy, text, error, cropped, worst quality, low quality, jpeg artifacts, signature, watermark, blurry, photo, photorealistic',
+    modelType: 'all',
   },
 
   testing_1: {
-    id: "testing_1",
-    name: "🧪 忘了哪偷的串",
-    description: "测试用的预设",
+    id: 'testing_1',
+    name: '🧪 忘了哪偷的串',
+    description: '测试用的预设',
     qualityTags:
-      "4::masterpiece, best quality ::, 2::official art, year2025 ::, 1.55::artist:nobusawa_osamu ::, 1.55::artist:tedain ::, 0.65::artist:houkisei ::, -2::3D, chibi,realistic ::, no text",
+      '4::masterpiece, best quality ::, 2::official art, year2025 ::, 1.55::artist:nobusawa_osamu ::, 1.55::artist:tedain ::, 0.65::artist:houkisei ::, -2::3D, chibi,realistic ::, no text',
     negativeTags:
-      "worst quality,low quality,artist collaboration, bad anatomy,extra fingers,extra legs, missing legs, missing fingers, mutation, text, watermark, low resolution",
-    modelType: "v4",
+      'worst quality,low quality,artist collaboration, bad anatomy,extra fingers,extra legs, missing legs, missing fingers, mutation, text, watermark, low resolution',
+    modelType: 'v4',
   },
 
   // 无预设 - 完全自定义
   none: {
-    id: "none",
-    name: "⚪ None",
-    description: "不添加任何预设标签",
-    qualityTags: "",
-    negativeTags: "",
-    modelType: "all",
+    id: 'none',
+    name: '⚪ None',
+    description: '不添加任何预设标签',
+    qualityTags: '',
+    negativeTags: '',
+    modelType: 'all',
   },
 } as const;
 

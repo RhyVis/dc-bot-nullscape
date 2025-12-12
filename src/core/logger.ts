@@ -1,4 +1,4 @@
-type LogLevel = "debug" | "info" | "warn" | "error";
+type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
 interface LogEntry {
   timestamp: string;
@@ -20,7 +20,7 @@ function formatLog(entry: LogEntry): string {
 function log(
   level: LogLevel,
   message: string,
-  data?: Record<string, unknown>
+  data?: Record<string, unknown>,
 ): void {
   const entry: LogEntry = {
     timestamp: new Date().toISOString(),
@@ -32,10 +32,10 @@ function log(
   const formatted = formatLog(entry);
 
   switch (level) {
-    case "error":
+    case 'error':
       console.error(formatted);
       break;
-    case "warn":
+    case 'warn':
       console.warn(formatted);
       break;
     default:
@@ -45,13 +45,13 @@ function log(
 
 export const logger = {
   debug: (message: string, data?: Record<string, unknown>) =>
-    log("debug", message, data),
+    log('debug', message, data),
   info: (message: string, data?: Record<string, unknown>) =>
-    log("info", message, data),
+    log('info', message, data),
   warn: (message: string, data?: Record<string, unknown>) =>
-    log("warn", message, data),
+    log('warn', message, data),
   error: (message: string, data?: Record<string, unknown>) =>
-    log("error", message, data),
+    log('error', message, data),
 
   // 专门用于记录图片生成
   logGeneration: (params: {
@@ -63,7 +63,7 @@ export const logger = {
     success: boolean;
     error?: string;
   }) => {
-    log("info", "Image generation", {
+    log('info', 'Image generation', {
       userId: params.userId,
       username: params.username,
       prompt: params.prompt,
@@ -83,7 +83,7 @@ export const logger = {
     success: boolean;
     error?: string;
   }) => {
-    log("info", "Tag translation", {
+    log('info', 'Tag translation', {
       userId: params.userId,
       username: params.username,
       input: params.input,

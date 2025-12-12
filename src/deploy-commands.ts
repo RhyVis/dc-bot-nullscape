@@ -1,31 +1,26 @@
-import { REST, Routes } from "discord.js";
-import { config } from "./utils/config.js";
-import { logger } from "./utils/logger.js";
-import { draw, imagine, translate, settings } from "./commands/index.js";
+import './bootstrap/loadEnv.js';
 
-const commands = [
-  draw.data.toJSON(),
-  imagine.data.toJSON(),
-  translate.data.toJSON(),
-  settings.data.toJSON(),
-];
+import { REST, Routes } from 'discord.js';
+import { config } from './core/config.js';
+import { logger } from './core/logger.js';
+import { commandJSON } from './commands/registry.js';
 
-const rest = new REST({ version: "10" }).setToken(config.discord.token);
+const rest = new REST({ version: '10' }).setToken(config.discord.token);
 
 async function deployCommands(): Promise<void> {
   try {
-    logger.info("Started refreshing application (/) commands...");
+    logger.info('Started refreshing application (/) commands...');
 
     await rest.put(Routes.applicationCommands(config.discord.clientId), {
-      body: commands,
+      body: commandJSON,
     });
 
-    logger.info("Successfully reloaded application (/) commands!", {
-      commands: commands.map((c) => c.name),
+    logger.info('Successfully reloaded application (/) commands!', {
+      commands: commandJSON.map((c: any) => c?.name).filter(Boolean),
     });
   } catch (error) {
-    logger.error("Failed to deploy commands", {
-      error: error instanceof Error ? error.message : "Unknown error",
+    logger.error('Failed to deploy commands', {
+      error: error instanceof Error ? error.message : 'Unknown error',
     });
     process.exit(1);
   }

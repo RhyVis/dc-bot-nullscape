@@ -3,7 +3,7 @@ import {
   EmbedBuilder,
   APIEmbedField,
   AttachmentBuilder,
-} from "discord.js";
+} from 'discord.js';
 
 export const INTERACTION_TASK_TIMEOUT_MS = 120000; // 与 NovelAI 请求超时保持一致
 
@@ -37,7 +37,7 @@ export interface PlaceholderHandle {
  */
 export async function createPlaceholder(
   interaction: ChatInputCommandInteraction,
-  options: PlaceholderInitOptions
+  options: PlaceholderInitOptions,
 ): Promise<PlaceholderHandle> {
   const embed = new EmbedBuilder().setColor(0x7289da).setTitle(options.title);
 
@@ -55,7 +55,7 @@ export async function createPlaceholder(
   });
 
   async function updateProgress(
-    progress: PlaceholderProgressOptions
+    progress: PlaceholderProgressOptions,
   ): Promise<void> {
     if (progress.title) {
       embed.setTitle(progress.title);
@@ -74,7 +74,7 @@ export async function createPlaceholder(
   }
 
   async function updateSuccess(
-    success: PlaceholderSuccessOptions
+    success: PlaceholderSuccessOptions,
   ): Promise<void> {
     if (success.title) {
       embed.setTitle(success.title);
@@ -98,7 +98,7 @@ export async function createPlaceholder(
   async function updateError(message: string): Promise<void> {
     const errorEmbed = new EmbedBuilder()
       .setColor(0xed4245)
-      .setTitle("❌ 操作失败")
+      .setTitle('❌ 操作失败')
       .setDescription(message);
 
     await interaction.editReply({
@@ -119,13 +119,13 @@ export async function createPlaceholder(
  */
 export async function runWithInteractionTimeout<T>(
   task: Promise<T>,
-  timeoutMs: number = INTERACTION_TASK_TIMEOUT_MS
+  timeoutMs: number = INTERACTION_TASK_TIMEOUT_MS,
 ): Promise<T> {
   let timeoutHandle: NodeJS.Timeout | null = null;
 
   const timeoutPromise = new Promise<never>((_, reject) => {
     timeoutHandle = setTimeout(() => {
-      reject(new Error("请求超时，请稍后重试"));
+      reject(new Error('请求超时，请稍后重试'));
     }, timeoutMs);
   });
 

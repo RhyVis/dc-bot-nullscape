@@ -1,4 +1,4 @@
-import { getDb } from '../infra/db.js';
+import { getDb } from '../../infra/db.js';
 
 export type SettingKey =
   | 'rate_limit_per_min'

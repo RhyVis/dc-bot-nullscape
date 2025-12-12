@@ -40,7 +40,7 @@ export interface V4PromptStructure {
 export interface NovelAIPayload {
   input: string;
   model: string;
-  action: "generate";
+  action: 'generate';
   parameters: {
     width: number;
     height: number;
@@ -76,23 +76,23 @@ export interface NovelAIPayload {
 }
 
 export const NAI_MODELS = {
-  "nai-diffusion-4-5-full": "🌟 V4.5 Full",
-  "nai-diffusion-4-5-curated": "✨ V4.5 Curated",
-  "nai-diffusion-4-full": "🎯 V4 Full",
-  "nai-diffusion-4-curated": "📌 V4 Curated",
-  "nai-diffusion-3": "🎨 V3 Anime",
-  "nai-diffusion-furry-v3": "🐺 V3 Furry",
+  'nai-diffusion-4-5-full': '🌟 V4.5 Full',
+  'nai-diffusion-4-5-curated': '✨ V4.5 Curated',
+  'nai-diffusion-4-full': '🎯 V4 Full',
+  'nai-diffusion-4-curated': '📌 V4 Curated',
+  'nai-diffusion-3': '🎨 V3 Anime',
+  'nai-diffusion-furry-v3': '🐺 V3 Furry',
 } as const;
 
 export type NAIModelId = keyof typeof NAI_MODELS;
 
 export const NAI_SAMPLERS = [
-  "k_euler",
-  "k_euler_ancestral",
-  "k_dpmpp_2s_ancestral",
-  "k_dpmpp_2m",
-  "k_dpmpp_sde",
-  "ddim_v3",
+  'k_euler',
+  'k_euler_ancestral',
+  'k_dpmpp_2s_ancestral',
+  'k_dpmpp_2m',
+  'k_dpmpp_sde',
+  'ddim_v3',
 ] as const;
 
 export type NAISampler = (typeof NAI_SAMPLERS)[number];
@@ -102,36 +102,36 @@ export type NAISampler = (typeof NAI_SAMPLERS)[number];
  * - 通用负向：用于避免常见的图片质量问题
  */
 export const DEFAULT_NEGATIVE_PROMPT =
-  "lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry";
+  'lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry';
 
 /**
  * V4+ 模型的默认质量标签 (自动添加到提示词末尾)
  * 参考 NovelAI 官方 Add Quality Tags 功能
  */
 export const V4_QUALITY_TAGS = {
-  "nai-diffusion-4-5-full": ", location, very aesthetic, masterpiece, no text",
-  "nai-diffusion-4-5-curated":
-    ", location, masterpiece, no text, -0.8::feet::, rating:general",
-  "nai-diffusion-4-full": ", no text, best quality, very aesthetic, absurdres",
-  "nai-diffusion-4-curated":
-    ", rating:general, amazing quality, very aesthetic, absurdres",
+  'nai-diffusion-4-5-full': ', location, very aesthetic, masterpiece, no text',
+  'nai-diffusion-4-5-curated':
+    ', location, masterpiece, no text, -0.8::feet::, rating:general',
+  'nai-diffusion-4-full': ', no text, best quality, very aesthetic, absurdres',
+  'nai-diffusion-4-curated':
+    ', rating:general, amazing quality, very aesthetic, absurdres',
 } as const;
 
 /**
  * V3 模型的默认质量标签
  */
 export const V3_QUALITY_TAGS = {
-  "nai-diffusion-3":
-    ", best quality, amazing quality, very aesthetic, absurdres",
-  "nai-diffusion-furry-v3": ", {best quality}, {amazing quality}",
+  'nai-diffusion-3':
+    ', best quality, amazing quality, very aesthetic, absurdres',
+  'nai-diffusion-furry-v3': ', {best quality}, {amazing quality}',
 } as const;
 
 // V4+ models require special parameters
 export const V4_MODELS: NAIModelId[] = [
-  "nai-diffusion-4-5-full",
-  "nai-diffusion-4-5-curated",
-  "nai-diffusion-4-full",
-  "nai-diffusion-4-curated",
+  'nai-diffusion-4-5-full',
+  'nai-diffusion-4-5-curated',
+  'nai-diffusion-4-full',
+  'nai-diffusion-4-curated',
 ];
 
 /**
@@ -147,45 +147,45 @@ export const MODEL_DEFAULTS: Record<
     smea_dyn: boolean;
   }
 > = {
-  "nai-diffusion-4-5-full": {
+  'nai-diffusion-4-5-full': {
     scale: 5,
     steps: 28,
-    sampler: "k_euler_ancestral",
+    sampler: 'k_euler_ancestral',
     smea: false,
     smea_dyn: false,
   },
-  "nai-diffusion-4-5-curated": {
+  'nai-diffusion-4-5-curated': {
     scale: 5,
     steps: 28,
-    sampler: "k_euler_ancestral",
+    sampler: 'k_euler_ancestral',
     smea: false,
     smea_dyn: false,
   },
-  "nai-diffusion-4-full": {
+  'nai-diffusion-4-full': {
     scale: 7,
     steps: 28,
-    sampler: "k_euler_ancestral",
+    sampler: 'k_euler_ancestral',
     smea: false,
     smea_dyn: false,
   },
-  "nai-diffusion-4-curated": {
+  'nai-diffusion-4-curated': {
     scale: 7,
     steps: 28,
-    sampler: "k_euler_ancestral",
+    sampler: 'k_euler_ancestral',
     smea: false,
     smea_dyn: false,
   },
-  "nai-diffusion-3": {
+  'nai-diffusion-3': {
     scale: 5,
     steps: 28,
-    sampler: "k_euler_ancestral",
+    sampler: 'k_euler_ancestral',
     smea: true,
     smea_dyn: true,
   },
-  "nai-diffusion-furry-v3": {
+  'nai-diffusion-furry-v3': {
     scale: 5,
     steps: 28,
-    sampler: "k_euler_ancestral",
+    sampler: 'k_euler_ancestral',
     smea: true,
     smea_dyn: true,
   },
@@ -195,22 +195,22 @@ export const MODEL_DEFAULTS: Record<
  * 尺寸预设
  */
 export const SIZE_PRESETS = {
-  portrait: { width: 832, height: 1216, name: "📱 Portrait (832×1216)" },
+  portrait: { width: 832, height: 1216, name: '📱 Portrait (832×1216)' },
   portrait_small: {
     width: 512,
     height: 768,
-    name: "📱 Portrait Small (512×768)",
+    name: '📱 Portrait Small (512×768)',
   },
-  landscape: { width: 1216, height: 832, name: "🖼️ Landscape (1216×832)" },
+  landscape: { width: 1216, height: 832, name: '🖼️ Landscape (1216×832)' },
   landscape_small: {
     width: 768,
     height: 512,
-    name: "🖼️ Landscape Small (768×512)",
+    name: '🖼️ Landscape Small (768×512)',
   },
-  square: { width: 1024, height: 1024, name: "⬜ Square (1024×1024)" },
-  square_small: { width: 512, height: 512, name: "⬜ Square Small (512×512)" },
-  wide: { width: 1536, height: 640, name: "📺 Wide (1536×640)" },
-  tall: { width: 640, height: 1536, name: "📐 Tall (640×1536)" },
+  square: { width: 1024, height: 1024, name: '⬜ Square (1024×1024)' },
+  square_small: { width: 512, height: 512, name: '⬜ Square Small (512×512)' },
+  wide: { width: 1536, height: 640, name: '📺 Wide (1536×640)' },
+  tall: { width: 640, height: 1536, name: '📐 Tall (640×1536)' },
 } as const;
 
 export type SizePreset = keyof typeof SIZE_PRESETS;
