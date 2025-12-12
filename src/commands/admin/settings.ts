@@ -6,9 +6,6 @@ import {
   ModalBuilder,
   TextInputBuilder,
   TextInputStyle,
-  ButtonBuilder,
-  ButtonStyle,
-  type ButtonInteraction,
   type ModalSubmitInteraction,
 } from 'discord.js';
 import { Command } from '../../types/commands.js';
@@ -37,39 +34,13 @@ function validatePresetId(id: string): string | null {
   return null;
 }
 
-const PRESET_UPSERT_STEP1_MODAL_ID_PREFIX = 'settings:preset_upsert:step1';
-const PRESET_UPSERT_STEP2_MODAL_ID_PREFIX = 'settings:preset_upsert:step2';
-const PRESET_UPSERT_OPEN_BUTTON_ID_PREFIX = 'settings:preset_upsert:open';
-const PRESET_UPSERT_MODAL_FIELD_ID = 'preset_id';
+const PRESET_UPSERT_MODAL_ID_PREFIX = 'settings:preset_upsert';
 const PRESET_UPSERT_MODAL_FIELD_NAME = 'preset_name';
 const PRESET_UPSERT_MODAL_FIELD_DESCRIPTION = 'preset_description';
 const PRESET_UPSERT_MODAL_FIELD_QUALITY = 'preset_quality';
 const PRESET_UPSERT_MODAL_FIELD_NEGATIVE = 'preset_negative';
 
-function buildPresetUpsertStep1Modal(options: {
-  userId: string;
-  id: string;
-}): ModalBuilder {
-  const modal = new ModalBuilder()
-    .setCustomId(`${PRESET_UPSERT_STEP1_MODAL_ID_PREFIX}:${options.userId}`)
-    .setTitle('新增/更新预设（第 1 步）');
-
-  const presetId = new TextInputBuilder()
-    .setCustomId(PRESET_UPSERT_MODAL_FIELD_ID)
-    .setLabel('预设 ID（字母/数字/_/-，最多 64）')
-    .setStyle(TextInputStyle.Short)
-    .setRequired(true)
-    .setMaxLength(64)
-    .setValue(options.id);
-
-  modal.addComponents(
-    new ActionRowBuilder<TextInputBuilder>().addComponents(presetId),
-  );
-
-  return modal;
-}
-
-function buildPresetUpsertStep2Modal(options: {
+function buildPresetUpsertModal(options: {
   userId: string;
   id: string;
   name: string;
@@ -78,16 +49,10 @@ function buildPresetUpsertStep2Modal(options: {
   negativeTags: string;
 }): ModalBuilder {
   const modal = new ModalBuilder()
-    .setCustomId(`${PRESET_UPSERT_STEP2_MODAL_ID_PREFIX}:${options.userId}`)
-    .setTitle('新增/更新预设（第 2 步）');
-
-  const presetId = new TextInputBuilder()
-    .setCustomId(PRESET_UPSERT_MODAL_FIELD_ID)
-    .setLabel('预设 ID（字母/数字/_/-，最多 64）')
-    .setStyle(TextInputStyle.Short)
-    .setRequired(true)
-    .setMaxLength(64)
-    .setValue(options.id);
+    .setCustomId(
+      `${PRESET_UPSERT_MODAL_ID_PREFIX}:${options.userId}:${options.id}`,
+    )
+    .setTitle('新增/更新预设');
 
   const name = new TextInputBuilder()
     .setCustomId(PRESET_UPSERT_MODAL_FIELD_NAME)
@@ -122,7 +87,6 @@ function buildPresetUpsertStep2Modal(options: {
     .setValue(options.negativeTags);
 
   modal.addComponents(
-    new ActionRowBuilder<TextInputBuilder>().addComponents(presetId),
     new ActionRowBuilder<TextInputBuilder>().addComponents(name),
     new ActionRowBuilder<TextInputBuilder>().addComponents(description),
     new ActionRowBuilder<TextInputBuilder>().addComponents(quality),
@@ -135,18 +99,14 @@ function buildPresetUpsertStep2Modal(options: {
 export async function handlePresetUpsertModalSubmit(
   interaction: ModalSubmitInteraction,
 ): Promise<boolean> {
-  const isStep1 = interaction.customId.startsWith(
-    `${PRESET_UPSERT_STEP1_MODAL_ID_PREFIX}:`,
-  );
-  const isStep2 = interaction.customId.startsWith(
-    `${PRESET_UPSERT_STEP2_MODAL_ID_PREFIX}:`,
-  );
-  if (!isStep1 && !isStep2) return false;
+  if (!interaction.customId.startsWith(`${PRESET_UPSERT_MODAL_ID_PREFIX}:`)) {
+    return false;
+  }
 
-  const expectedUserId = interaction.customId.slice(
-    `${isStep1 ? PRESET_UPSERT_STEP1_MODAL_ID_PREFIX : PRESET_UPSERT_STEP2_MODAL_ID_PREFIX}:`
-      .length,
-  );
+  const parts = interaction.customId.split(':');
+  // settings:preset_upsert:<userId>:<presetId>
+  const expectedUserId = parts[2] ?? '';
+  const presetId = parts[3] ?? '';
 
   if (expectedUserId !== interaction.user.id) {
     await interaction.reply({
@@ -166,40 +126,12 @@ export async function handlePresetUpsertModalSubmit(
     return true;
   }
 
-  // Step 1: 输入 ID -> 打开 Step 2 并预填
-  if (isStep1) {
-    const id = interaction.fields.getTextInputValue(
-      PRESET_UPSERT_MODAL_FIELD_ID,
-    );
-
-    const idError = validatePresetId(id);
-    if (idError) {
-      await interaction.reply({ content: `❌ ${idError}`, ephemeral: true });
-      return true;
-    }
-
-    const trimmedId = id.trim();
-    const existing = getPreset(trimmedId);
-    const hint = existing
-      ? `✅ 已找到预设：${existing.name}（${existing.id}）`
-      : `🆕 将创建新预设：${trimmedId}`;
-
-    const button = new ButtonBuilder()
-      .setCustomId(
-        `${PRESET_UPSERT_OPEN_BUTTON_ID_PREFIX}:${interaction.user.id}:${trimmedId}`,
-      )
-      .setLabel('打开第 2 步表单')
-      .setStyle(ButtonStyle.Primary);
-
-    await interaction.reply({
-      content: `${hint}\n点击下方按钮继续编辑内容。`,
-      components: [new ActionRowBuilder<ButtonBuilder>().addComponents(button)],
-      ephemeral: true,
-    });
+  const idError = validatePresetId(presetId);
+  if (idError) {
+    await interaction.reply({ content: `❌ ${idError}`, ephemeral: true });
     return true;
   }
 
-  const id = interaction.fields.getTextInputValue(PRESET_UPSERT_MODAL_FIELD_ID);
   const name = interaction.fields.getTextInputValue(
     PRESET_UPSERT_MODAL_FIELD_NAME,
   );
@@ -213,19 +145,13 @@ export async function handlePresetUpsertModalSubmit(
     PRESET_UPSERT_MODAL_FIELD_NEGATIVE,
   );
 
-  const idError = validatePresetId(id);
-  if (idError) {
-    await interaction.reply({ content: `❌ ${idError}`, ephemeral: true });
-    return true;
-  }
-
   if (name.trim().length === 0) {
     await interaction.reply({ content: '❌ name 不能为空', ephemeral: true });
     return true;
   }
 
   const preset = upsertPresetNormalized({
-    id,
+    id: presetId,
     name,
     description,
     qualityTags,
@@ -251,58 +177,6 @@ export async function handlePresetUpsertModalSubmit(
     .setTimestamp();
 
   await interaction.reply({ embeds: [embed], ephemeral: true });
-  return true;
-}
-
-export async function handlePresetUpsertOpenStep2Button(
-  interaction: ButtonInteraction,
-): Promise<boolean> {
-  if (
-    !interaction.customId.startsWith(`${PRESET_UPSERT_OPEN_BUTTON_ID_PREFIX}:`)
-  ) {
-    return false;
-  }
-
-  const parts = interaction.customId.split(':');
-  // settings:preset_upsert:open:<userId>:<presetId>
-  const expectedUserId = parts[4] ?? '';
-  const presetId = parts.slice(5).join(':');
-
-  if (expectedUserId !== interaction.user.id) {
-    await interaction.reply({
-      content: '❌ 该按钮不属于你（请重新执行命令打开表单）。',
-      ephemeral: true,
-    });
-    return true;
-  }
-
-  const userId = interaction.user.id;
-  const isAdmin = isAdminUser(userId);
-  if (!isAdmin) {
-    await interaction.reply({
-      content: '❌ 你没有权限使用此功能。',
-      ephemeral: true,
-    });
-    return true;
-  }
-
-  const idError = validatePresetId(presetId);
-  if (idError) {
-    await interaction.reply({ content: `❌ ${idError}`, ephemeral: true });
-    return true;
-  }
-
-  const existing = getPreset(presetId.trim());
-  const modal = buildPresetUpsertStep2Modal({
-    userId: interaction.user.id,
-    id: existing?.id ?? presetId.trim(),
-    name: existing?.name ?? '',
-    description: existing?.description ?? '',
-    qualityTags: existing?.qualityTags ?? '',
-    negativeTags: existing?.negativeTags ?? '',
-  });
-
-  await interaction.showModal(modal);
   return true;
 }
 
@@ -377,7 +251,13 @@ export const command: Command = {
     .addSubcommand((subcommand) =>
       subcommand
         .setName('preset_upsert')
-        .setDescription('新增或更新预设 (自动格式化)'),
+        .setDescription('新增或更新预设 (自动格式化)')
+        .addStringOption((option) =>
+          option
+            .setName('id')
+            .setDescription('预设 ID（全局唯一）')
+            .setRequired(true),
+        ),
     )
     .addSubcommand((subcommand) =>
       subcommand
@@ -404,9 +284,22 @@ export const command: Command = {
 
     // 预设新增/更新改用 Modal 表单输入，避免 :xxxxx: 被 Discord 表情输入干扰
     if (subcommand === 'preset_upsert') {
-      const modal = buildPresetUpsertStep1Modal({
+      const id = interaction.options.getString('id', true);
+      const idError = validatePresetId(id);
+      if (idError) {
+        await interaction.reply({ content: `❌ ${idError}`, ephemeral: true });
+        return;
+      }
+
+      const trimmedId = id.trim();
+      const existing = getPreset(trimmedId);
+      const modal = buildPresetUpsertModal({
         userId: interaction.user.id,
-        id: '',
+        id: trimmedId,
+        name: existing?.name ?? '',
+        description: existing?.description ?? '',
+        qualityTags: existing?.qualityTags ?? '',
+        negativeTags: existing?.negativeTags ?? '',
       });
 
       await interaction.showModal(modal);
